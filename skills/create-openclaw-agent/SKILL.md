@@ -1,26 +1,46 @@
 ---
 name: create-openclaw-agent
 description: >
-  Bootstrap a complete OpenClaw agent workspace (SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md,
-  HEARTBEAT.md, TOOLS.md, openclaw.json snippet, plus INSTALL.md) from an interview or an input document.
-  The skill writes files to a LOCAL directory — it never touches the user's OpenClaw installation. Installation
-  happens separately via the generated INSTALL.md commands. INVOKE THIS SKILL when: the user wants to create
-  a new OpenClaw agent, scaffold a workspace, convert a business description or brand guide (.docx/.pdf/.md/.txt,
-  including existing system prompts / config.yaml) into an agent, or says /create-openclaw-agent. Also invoke
-  when the user mentions "set up a new bot", "create a chatbot for [business]", "make an agent for [client]",
-  or any variation of wanting to scaffold a new OpenClaw agent from scratch — even if they don't mention OpenClaw
-  by name, as long as context suggests they're working within the OpenClaw ecosystem.
+  Bootstrap the personality of an OpenClaw agent — SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md,
+  HEARTBEAT.md, TOOLS.md, a minimal openclaw.json agent entry, and a short NEXT-STEPS.md handoff — from
+  an interview or an input document. The skill writes files to a LOCAL directory and is intentionally
+  tech-neutral: it does NOT configure channels, install skills, name providers, or touch the user's
+  OpenClaw installation. Environment setup (WhatsApp/Telegram wiring, skill installs, channel policies,
+  model identifiers, integrations) happens in a separate Claude Code session that verifies current config
+  against live OpenClaw docs. INVOKE THIS SKILL when: the user wants to create a new OpenClaw agent,
+  scaffold a workspace, convert a business description or brand guide (.docx/.pdf/.md/.txt, including
+  existing system prompts / config.yaml) into an agent, or says /create-openclaw-agent. Also invoke when
+  the user mentions "set up a new bot", "create a chatbot for [business]", "make an agent for [client]",
+  or any variation of wanting to scaffold a new OpenClaw agent from scratch — even if they don't mention
+  OpenClaw by name, as long as context suggests they're working within the OpenClaw ecosystem.
 ---
 
-# Create OpenClaw Agent
+# Create OpenClaw Agent — Personality Bootstrap
 
-Your job is to produce a ready-to-install OpenClaw agent workspace — as a pile of files in a local directory —
-based on information you gather from the user (interview) or extract from a document they provide. You do NOT
-install the agent into the user's OpenClaw environment. You emit files + an `INSTALL.md` that tells them (or
-another Claude Code session) exactly how to install.
+Your job is to produce the **personality** of an OpenClaw agent — a pile of markdown files describing
+who the agent is, how it talks, what it does, what it remembers, and where it stops. You emit them to
+a local directory for review. You do NOT install the agent into an OpenClaw environment and you do NOT
+configure channels, plugins, or any environment-specific setup.
 
-This separation matters: the user may be on a different machine than where OpenClaw runs, may want to review
-the files before installing, or may want to version-control the workspace in a repo.
+**Why this separation.** Config keys (channel policies, plugin names, CLI commands, model identifiers,
+skill slugs) drift between OpenClaw releases. If this skill tries to guess them from memory it will
+invent things — and it has in the past. By staying above the config layer, the skill produces a durable
+personality bundle that a follow-up Claude Code session (with current docs or `/openclaw-scout`) can
+wire into whatever OpenClaw version the user has. The personality files don't need to change when the
+environment does.
+
+**What that means in practice:**
+- ✅ You write SOUL / AGENTS / IDENTITY / USER / MEMORY / HEARTBEAT / TOOLS in plain markdown.
+- ✅ You write a minimal `openclaw.json` containing only the agent's `id` and `workspace`.
+- ✅ You write a short `NEXT-STEPS.md` telling whoever installs what they still need to do.
+- ❌ You do NOT name Baileys / grammY / gog / whisper / any plugin.
+- ❌ You do NOT set `dmPolicy`, `groupPolicy`, `provider`, `skills.entries`, etc. in openclaw.json.
+- ❌ You do NOT write CLI commands (`openclaw start`, `skill install`, etc.) in NEXT-STEPS.md. You can
+  gesture at actions abstractly ("configure the WhatsApp channel per your OpenClaw docs") but not
+  prescribe command names.
+- ❌ You do NOT generate integration stubs (`agenda.md`, `leads.md`, `products.md`, etc.) by default.
+  The agent's capabilities in AGENTS.md describe access to abstract data ("the calendar of available
+  slots") without committing to a storage mechanism.
 
 ## Two Input Modes
 
@@ -84,119 +104,85 @@ to USE, expressions to AVOID.
 Who contacts the agent (patients, customers, leads), their profile and expectations, business hours, what
 they typically ask about.
 
-### 4. CHANNELS → openclaw.json, TOOLS.md, AGENTS.md
-WhatsApp / Telegram / Discord / web / other. For each:
-- dmPolicy (open / pairing / allowlist)
-- Group behavior (ignore / respond-when-mentioned / always-respond)
-- Channel-specific formatting (no markdown tables on WhatsApp, etc.)
-- **Multimedia**: does the channel carry audio, images, video, documents? How should the agent handle
-  them? (audio transcription prefixed with a marker, image captions surfaced, attachments stored, etc.)
-  Ask explicitly — users often forget to mention it and the agent ends up silent on audios.
+### 4. CHANNELS → AGENTS.md, TOOLS.md (conceptual only)
 
-### 5. CAPABILITIES & TOOLS → AGENTS.md, TOOLS.md, openclaw.json
+What channels the agent speaks on — WhatsApp / Telegram / Discord / web / other. Capture **behavior**,
+not configuration. Specifically:
 
-What the agent can DO. This is the richest category — explore it carefully.
+- Which channels (just the names)
+- Channel-specific formatting: WhatsApp avoids markdown tables, keeps messages short (1-3 paragraphs),
+  uses `**bold**` for emphasis rather than headers; Telegram allows longer messages and richer
+  markdown; web chat has no strict limits; etc.
+- How the agent responds in groups vs 1:1 (if applicable): respond always / only when mentioned /
+  ignore groups entirely — as a behavior rule the agent follows, phrased in natural language.
 
-**Basic capabilities to ask about:**
-- Answer FAQs / provide information
-- Schedule appointments (→ `gog` skill for Google Calendar)
-- Process orders / recommend products
-- Collect intake data
-- Send reminders
-- Handoff to human operator
+**Do NOT ask about provider names, dmPolicy values, plugin identifiers, or any config key.** That's an
+install-time concern handled in a separate session. The skill produces the *personality* of the agent;
+the environment (which Baileys/grammY/etc. plugin, which policy enum) is wired up by whoever installs
+the bundle, using the current OpenClaw docs.
 
-**External tools and data sources — watch for these signals in the user's answers:**
+Messages the agent receives may include transcribed audio, images, or documents — depending on how the
+operator configures channels/providers later. In AGENTS.md, describe the agent's **behavior** in plain
+terms ("if a transcribed audio arrives, respond to the content normally; if an image arrives, ask the
+user to describe it in text because you don't process images"). Do not invent marker strings, prefixes,
+or transcription provider names.
 
-- "it connects to…", "we have an API…", "the catalog is at…"
-- "pulls from…", "syncs with…", "looks up…"
-- Mentions of Google Calendar, Sheets, Drive, a CRM, an internal database
+### 5. CAPABILITIES → AGENTS.md (conceptual only)
 
-When you detect an external tool or data source, dig in:
-1. What's the URL / endpoint?
-2. Is there documentation? (file path, URL, or OpenAPI spec)
-3. How does the agent use it — direct HTTP calls at runtime, or is data pre-loaded into RAG and synced?
-4. What specifically does the agent need to do with it?
-5. Auth: API key, OAuth, none?
+What the agent can DO, described as agent behavior — not as tools, APIs, skills, or files.
 
-### Test-mode first — the default philosophy
+**Capture capabilities like:**
+- Answer FAQs and provide business information
+- Propose and confirm appointment slots
+- Recommend products based on stated goals
+- Collect intake data from new customers
+- Record and look up customer history
+- Hand off to a human operator when triggered
 
-**This skill's job is to produce a workspace that runs AS-IS in test mode, with zero external
-dependencies.** Real integrations (OAuth calendars, live APIs, vector stores) are a later iteration,
-not part of the default bundle. The end user will connect them in a follow-up session once they've seen
-the agent respond coherently in the playground.
+For each capability, describe the behavior:
+- When the agent acts on this capability (user intent / triggers)
+- What data source it relies on, **in abstract terms** ("the calendar of available slots", "the
+  catalog of products", "the lead history") — not a specific file name, API, or skill
+- What the agent must never do (inventing data, promising outcomes, etc.)
 
-This mirrors `workspace-clinicaejemplo` in OpenClaw's own tree: the bot reads/writes `agenda.md` as a
-local mock for Google Calendar. Real `gog` gets wired later.
+**Why abstract.** The same agent might eventually use a local `agenda.md` stub, a Google Calendar via
+an OAuth skill, or an internal CRM — the agent's *behavior* doesn't change across those substrates.
+Leaving the access layer to install time prevents the skill from inventing config keys that drift
+between OpenClaw releases.
 
-### Pattern map — prefer the test-mode column
+**Anti-hallucination.** If the agent must only confirm info that's present in its source of truth
+(catalog, calendar, knowledge base), encode that as a rule in AGENTS.md Red Lines phrased as a
+behavior rule ("only confirm appointments from the calendar — never invent a slot; only confirm prices
+from the price list — never estimate") without committing to a particular storage mechanism.
 
-For every integration need the user mentions (calendar, catalog, DB, FAQ, lead history), pick a
-test-mode stub for the default bundle. Document the real integration only in INSTALL.md "Next steps".
-
-| Need | Test-mode stub (default bundle) | Real integration (INSTALL.md "Next steps") |
-|---|---|---|
-| Calendar / scheduling | `agenda.md` — markdown table with dates/slots/status the agent edits in place | `gog` skill (Google Workspace OAuth) |
-| Product or service catalog | `products.md` — list with name/price/description | Live HTTP API called from TOOLS.md |
-| FAQ / canned answers | `FAQ.md` (or embed in SOUL.md Knowledge if small) | Pre-synced RAG / vector store |
-| Lead history / audit log | `leads.sqlite` if structured queries needed, else `leads.md` | CRM integration, external DB |
-| Known OpenClaw skill at test time | Install only if the skill runs offline (e.g. `session-logs`, `canvas`) | `gog`, `notion`, `slack` etc. → Next steps |
-
-### .md vs sqlite for local stubs — how to pick
-
-- **Markdown (.md)** when the data is human-readable, small (<~100 rows), and the agent mostly READS + occasionally
-  appends. Example: `agenda.md` with 7 days × 8 slots. Format as a structured table with unique row identifiers
-  (`| seg 14/04 | 09:00 | ... |`) so the agent can do targeted edits without ambiguity.
-- **SQLite (.sqlite)** when you need structured queries, larger volume, or the agent writes frequently.
-  Example: `leads.sqlite` with `leads(phone, name, clinic_type, first_contact_at, status)`. Include a
-  `leads.schema.sql` in the workspace as a reference for what the agent can query.
-
-Default to .md unless the user explicitly asks for sqlite — markdown is auditable, diff-friendly, and the
-operator can edit it manually while the bot is running.
-
-### Anti-hallucination
-
-Regardless of where the data lives, if the agent must only confirm info that's present in the source,
-encode the rule in AGENTS.md Red Lines phrased around the actual source (`agenda.md`, `products.md`, the
-API response, SOUL.md Knowledge) — not around a pattern name.
-
-**Anti-hallucination** is a separate concern — applies regardless of where data lives. If the agent must
-only confirm info that's present somewhere (RAG, API response, SOUL.md), encode that as a rule in AGENTS.md
-Red Lines. Don't tie the rule to a specific data-access pattern.
-
-Different runtimes do it differently, so ask:
+**Handoff to a human** is always its own question. Different deployments handle it differently.
+Describe the agent's behavior, not the mechanism:
 
 1. What triggers a handoff? (unknown topic, user asks for human, specific keywords, complex request)
-2. What's the handoff mechanism? Common options:
-   - **OpenClaw-native "silent mode"**: the agent stops replying and waits for reactivation by another
-     agent, the operator, a timeout, or a topic-change detector. This is OpenClaw's default handoff
-     primitive — document the trigger conditions in AGENTS.md and flag in INSTALL.md that the runtime
-     wiring (who/what reactivates the agent) is an install-time concern.
-   - **Tail-tag** (e.g. a string like `[HANDOFF]` at the end of the response that middleware strips and
-     uses to route): legacy pattern from some Python-based agents. Only use it if the end user confirms
-     their runtime parses such a tag. Don't assume it's an OpenClaw convention — it isn't.
-   - **Tool/skill call**: a dedicated `handoff_to_human` skill the agent invokes.
-3. Where does the operator see the escalation? (another channel, a dashboard, a shared inbox)
+2. What does the agent do when it hands off? The default OpenClaw-native behavior is **silent mode**:
+   the agent stops replying and stays passive until reactivated by another agent, the operator, a
+   timeout, or a topic-change detector. No tags, no codes — silence is the signal.
+3. Where does the operator see the escalation? (describe generically: another channel, a dashboard,
+   an inbox — the operator wires up the specific surface later.)
 
-Document the handoff mechanism the user describes in AGENTS.md under a Handoff Protocol section.
-Don't invent a mechanism; if the user doesn't specify one, default to OpenClaw-native silent mode
-and flag it in INSTALL.md "Notes & open items" as needing runtime confirmation.
+Document the handoff in AGENTS.md as a Handoff Protocol section: triggers + "stop replying and wait
+for reactivation" as the behavior. The operator chooses the reactivation mechanism when they install.
 
-**Multi-intent behavior.** Some agents behave differently across different topics (a supplement shop has
-different rules for "product info" vs. "pharmacological dosing" vs. "checkout"). Don't replicate a routing
-layer — these are behavior rules. Capture them in AGENTS.md as sections under Capabilities or as distinct
-rule clusters. Example structure:
+**Multi-intent behavior.** Some agents behave differently across topics (a supplement shop has
+different rules for "product info" vs "dosing" vs "checkout"). Capture those as sub-sections under
+AGENTS.md Capabilities — the agent reads the right sub-section for the intent at hand. Example:
 
 ```
-## Capabilities
+## Capacidades
 
-### Product information
-[rules for this intent]
+### Información de productos
+[rules]
 
-### Dosing questions
-[rules for this intent — maybe stricter than product info]
+### Preguntas de dosificación
+[rules — stricter]
 
-### Purchase intent
-[rules for closing, handoff triggers]
+### Intención de compra
+[rules — handoff triggers]
 ```
 
 ### 6. LIMITS → SOUL.md, AGENTS.md
@@ -242,17 +228,14 @@ file it will land in. This is the single most important step. Format:
 --- MEMORY.md --- [empty template]
 --- HEARTBEAT.md --- [empty, or periodic checks]
 --- TOOLS.md ---
-  Channel formatting: [rules]
-  External data: [API endpoint / RAG source / embedded in SOUL — whichever applies]
-  Handoff mechanism: [silent-mode default / tail-tag if user confirmed it / dedicated skill]
+  Channel formatting: [rules per channel — behavior only, no provider names]
+  Quick references: [lookup tables if any]
 
---- openclaw.json (merge snippet) ---
-  Channels: [which channels + dmPolicy]
-  Model: [suggested LLM]
-  Skills: [to install]
+--- openclaw.json (minimal agent entry) ---
+  Contents: ONLY `id` + `workspace`. No channels, skills, providers, policies — those are install-time.
 
---- INSTALL.md (post-generation) ---
-  Contains: copy-paste commands to install this workspace into the user's OpenClaw env
+--- NEXT-STEPS.md ---
+  Contents: tech-neutral handoff explaining what's in the bundle and what the installer session must wire.
 
 --- Output directory ---
   Path: [resolved path]
@@ -266,7 +249,7 @@ After showing: "Does this look right? Want to change anything before I write the
 ## File patterns
 
 Follow these patterns. All content in the agent's target language — **including section headers** — except
-`openclaw.json` and `INSTALL.md`, which are always in English (they're technical/operational, not
+`openclaw.json` and `NEXT-STEPS.md`, which are always in English (they're technical/operational, not
 customer-facing).
 
 The templates below use English headers as placeholders. When generating the actual files, translate the
@@ -437,177 +420,133 @@ Add 2–4 checks if the user specifically wants periodic proactive behavior.
 
 ### TOOLS.md
 
+Channel-formatting conventions and business-specific quick references. **No** provider names, plugin
+identifiers, CLI commands, API endpoints, or OAuth details — those belong to install time. Section
+headers in the agent's target language.
+
 ```markdown
-# TOOLS.md — Local Configuration
+# TOOLS.md — Convenciones Locais
+(adjust title + headers to the agent's target language)
 
-## Channel Formatting
+## Formatação por Canal
+
 ### WhatsApp
-- No markdown tables — bullet lists
-- Short messages (1–3 paragraphs)
-- **bold** for emphasis, not headers
-- Emojis with moderation
+- Sin tablas markdown — listas con bullets o numeradas
+- Mensajes cortos (1-3 párrafos)
+- **bold** para énfasis, no headers
+- Emojis con moderación
 
-## External Data Sources
-[Pick whichever applies:
- - Direct HTTP API called at runtime: URL, endpoints, docs reference, auth approach, intended use.
- - Pre-synced RAG / vector store: source URL, sync pipeline, what's indexed, what isn't, refresh cadence.
- - Embedded in SOUL.md: no external source; state that the data is static and lives in the workspace.
- Document the "source of truth" clearly — downstream rules in AGENTS.md reference this.]
+### Telegram
+(Similar — typically allows longer messages and richer formatting than WhatsApp.)
 
-## Quick References
-[Business-specific lookup tables: payment methods, shipping options, discount tiers, etc.]
+## Referências Rápidas
+[Business-specific lookup tables that don't fit in SOUL.md Knowledge and aren't big enough to need
+their own file — e.g. payment methods, shipping zones, discount tiers. Plain text or small tables.]
 ```
 
-### openclaw.json (merge snippet)
+### openclaw.json (minimal agent entry)
 
-This is a **fragment** the user will merge into their real `~/.openclaw/openclaw.json`. Use JSON5 (comments
-ok). Minimal — only sections relevant to this agent.
+**Scope reminder:** this skill generates the agent's *personality*, not its environment configuration.
+Channel plugins, skill installations, provider keys, model identifiers, dmPolicy enums, heartbeat
+defaults — **all of that belongs in a separate Claude Code session** that verifies current config keys
+against live OpenClaw docs (via `/openclaw-scout` or the install docs).
+
+The only thing this skill emits in `openclaw.json` is the single entry the end user (or Claude Code in
+the follow-up session) will add under `agents.list[]`. Keep it to `id` + `workspace`. That's it.
 
 ```json5
+// openclaw.json — agent entry fragment
+// Generated by create-openclaw-agent. Add this object under `agents.list[]` in your
+// ~/.openclaw/openclaw.json. Do NOT copy any other keys from here into the root config —
+// channel setup, skills, providers, policies, etc. belong to a separate install session that
+// verifies the current OpenClaw schema. See NEXT-STEPS.md.
 {
-  // [Agent Name] — generated by create-openclaw-agent
-  // Merge this into your ~/.openclaw/openclaw.json — do not replace the whole file.
-  identity: {
-    name: "[Agent Name]",
-    theme: "[one-line theme]",
-    emoji: "[emoji]"
-  },
-  agent: {
-    workspace: "~/.openclaw/workspace-[slug]",  // adjust if your layout differs
-    model: {
-      primary: "google/gemini-2.5-flash"  // cost-effective default; change to taste
-    }
-  },
-  channels: {
-    // Only include channels the agent uses
-    whatsapp: { enabled: true, dmPolicy: "open" }
-  },
-  defaults: {
-    heartbeat: { showOk: false, showAlerts: true }
-  }
+  id: "[slug]",
+  workspace: "~/.openclaw/workspace-[slug]"
 }
 ```
 
-### INSTALL.md (always generated last)
+Do **not** add `identity`, `model`, `channels`, `skills`, `defaults`, `bindings`, `theme`, `emoji`, or
+any policy key here. If the user asks, explain that those go to the follow-up install session because
+config keys change between OpenClaw releases and this skill isn't authoritative on them.
 
-This file is **for the human installing the bundle** (the end user, or another Claude Code session) —
-it does NOT go into the agent's workspace. It's the recipe to take the generated files from the local
-output directory and install them into an OpenClaw environment. Always written in English (operational
-content, not customer-facing).
+### NEXT-STEPS.md (always generated last)
 
-Structure — two parts:
+This file is **for whoever installs the bundle** (the end user, or another Claude Code session). It's
+short and tech-neutral: it tells the installer what the bundle contains and what they still need to do.
+No specific CLI commands, no channel keys, no skill names. Always in English.
 
-**Part 1 — Install as-is (test mode).** The default bundle is self-contained: local stub files replace
-every external integration. These steps get the agent running in the playground in ~5 minutes with
-zero upstream dependencies. Contents:
-
-1. **What this bundle is** (2-line summary, including the test-mode stubs used — e.g. "uses `agenda.md`
-   as a Google Calendar mock").
-2. **Prerequisites** — OpenClaw installed; no external services required for test mode.
-3. **Install steps** (copy-paste ready):
-   - Create the workspace: `openclaw agents add <slug>` or `mkdir -p ~/.openclaw/workspace-<slug>`
-   - Copy all `*.md` files + any stub files (`agenda.md`, `products.md`, `leads.sqlite`, etc.)
-   - Merge the `openclaw.json` snippet — identity override for single-agent, else under `agents.list[]`
-4. **Channel setup (test mode)** — for WhatsApp/Telegram/web, just enough to get messages flowing.
-5. **Verification** — `openclaw agents list`, playground smoke test with concrete suggested prompts.
-6. **Notes & open items** — things the skill wasn't sure about and the user should review before real use.
-
-**Part 2 — Next iterations (real integrations).** Lists the integrations that are currently stubbed
-and what to do when the user wants to wire them up for real. Each entry has the trigger, the skill/API
-to install, and what file(s) in the workspace to update. Example entries:
-
-- **Calendar (currently stubbed via `agenda.md`)** → when ready to use a real calendar:
-  `openclaw skill install gog`, follow OAuth setup, update TOOLS.md and AGENTS.md to read/write via
-  `gog` CLI instead of editing `agenda.md`.
-- **Catalog (currently in `products.md`)** → when ready: point at the live API, update TOOLS.md with
-  endpoint + auth, remove `products.md` or keep as local cache.
-- **Lead history (currently `leads.sqlite`)** → when ready: migrate to a CRM.
-
-Keep Part 2 short and actionable. It's a hand-off, not a spec — Claude Code in a follow-up session
-will do the actual wiring.
+Target length: 20–40 lines. Purpose: hand off cleanly.
 
 Template:
 
 ```markdown
-# INSTALL.md — [Agent Name]
+# NEXT-STEPS.md — [Agent Name]
 
-Generated by create-openclaw-agent on [date]. Target: install as a new OpenClaw agent named `[slug]`.
+This bundle contains the agent's personality, operating rules, and business knowledge. It does **not**
+include channel configuration, skill installation, or any environment-specific setup — those are
+volatile across OpenClaw releases and should be wired up with current docs.
 
-## Prerequisites
-- OpenClaw installed and running (`openclaw --version`)
-- [Any skill prerequisites, e.g. `openclaw skill install gog`]
+## What's in this bundle
 
-## Install
+- `SOUL.md`, `AGENTS.md`, `IDENTITY.md`, `USER.md`, `MEMORY.md`, `HEARTBEAT.md`, `TOOLS.md` — workspace
+  personality files (plain markdown).
+- `openclaw.json` — minimal agent entry (just `id` and `workspace`).
+- `NEXT-STEPS.md` — this file.
 
-1. **Create the workspace directory**
-   ```bash
-   mkdir -p ~/.openclaw/workspace-[slug]
-   ```
-   (Or use `openclaw agents add [slug]` if you prefer the wizard — it creates workspace + state dir + session store.)
+## To install
 
-2. **Copy the generated files**
-   ```bash
-   cp [output-dir]/SOUL.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/AGENTS.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/IDENTITY.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/USER.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/MEMORY.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/HEARTBEAT.md ~/.openclaw/workspace-[slug]/
-   cp [output-dir]/TOOLS.md ~/.openclaw/workspace-[slug]/
-   ```
+Open a fresh Claude Code session in your OpenClaw environment (ideally with `/openclaw-scout` enabled)
+and hand over this bundle. The installer session should:
 
-3. **Merge `openclaw.json` snippet** into `~/.openclaw/openclaw.json`
-   - For single-agent setups: copy the `identity`, `agent`, `channels`, `defaults` keys from the snippet.
-   - For multi-agent setups: add an entry under `agents.list[]` with `id: "[slug]"` and `workspace:
-     "~/.openclaw/workspace-[slug]"`, and add the channel binding under `bindings`.
+1. Copy the workspace `.md` files into the OpenClaw workspace directory (path depends on your layout).
+2. Add the agent entry from `openclaw.json` under `agents.list[]` in your `openclaw.json`.
+3. Configure the channel(s) the agent should speak on (WhatsApp / Telegram / web / etc.) using the
+   current OpenClaw CLI / docs. This skill intentionally left channel config out — verify the current
+   command names and config schema against the OpenClaw docs at install time.
+4. If the agent needs external skills (calendar, memory search, etc.), install them in the installer
+   session, after verifying the current `skills install` command and the target skill's docs.
+5. Smoke-test in the playground with 3–5 representative prompts before exposing to real traffic.
 
-4. **Channel setup**
-   [Per-channel steps based on what was configured. Examples:]
-   - **WhatsApp (Baileys):** on first start, scan the QR code shown in the gateway logs.
-   - **Telegram:** create a bot with @BotFather, put the token in `channels.telegram.botToken` in openclaw.json.
+**Do not let the installer session invent config keys or CLI commands.** If unsure, run
+`/openclaw-scout`.
 
-5. **Skills to install** (if any)
-   ```bash
-   openclaw skill install gog    # Google Calendar — only if scheduling is needed
-   ```
+## Iterations (later sessions)
 
-6. **Start the gateway**
-   ```bash
-   openclaw start
-   ```
+Once the agent's voice works in playground, you can iterate by:
+- Connecting a real calendar / CRM / catalog (currently left abstract in AGENTS.md).
+- Adding observability or a handoff dashboard.
+- Scheduling proactive checks (HEARTBEAT.md) if the agent should remind users of things.
+- Refining SOUL.md and MEMORY.md based on playground conversations.
 
-## Verify
-
-```bash
-openclaw agents list
-```
-
-You should see `[slug]` in the list. Send a test message through the configured channel and check the
-gateway logs.
+Each iteration is its own Claude Code session. Keep the bundle simple; let complexity accumulate at
+install/ops time, not in the personality files.
 
 ## Notes & open items
 
-[Things the skill wasn't sure about — e.g. "Exact menu prices were assumed, review SOUL.md Knowledge section",
-"Custom catalog API: you'll need to create a skill or use a plugin to connect — URL is in TOOLS.md"]
+[Things the skill wasn't sure about — e.g. "Menu prices were assumed, review SOUL.md Knowledge before
+going live with real customers".]
 ```
 
 ## After writing files
 
-Once all files are written to the output directory, print a concise summary:
+Print a concise summary to the user:
 
-- `✓ Wrote 9 files to <output-dir>/`
-- One-line list of files
-- `Next step: follow INSTALL.md to install into your OpenClaw environment.`
-- If any skills need to be installed, surface that command explicitly here too.
+- `✓ Wrote N files to <output-dir>/`
+- One-line list of files.
+- `Next: hand this bundle to a fresh Claude Code session in your OpenClaw environment — it will wire
+  up the install. See NEXT-STEPS.md for context.`
+- If any capability in the bundle needs environment decisions (which channel, which skill for calendar,
+  etc.), list them here under "Decisions left for the install session" — don't try to answer them now.
 
 ## Language
 
 - Talk to the user in their language.
-- All **agent-facing** file contents (SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md, HEARTBEAT.md,
-  TOOLS.md) are in the agent's target language — Brazilian Portuguese for a Brazilian clinic, Uruguayan
-  Spanish for an Uruguayan shop, etc. Dialect matters.
-- `openclaw.json` and `INSTALL.md` are **always in English** — they are technical/operational files, not
-  customer-facing.
+- All **agent-facing** files (SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md, HEARTBEAT.md,
+  TOOLS.md) are in the agent's target language — Brazilian Portuguese for a Brazilian clinic,
+  Uruguayan Spanish for an Uruguayan shop, Argentine Spanish for Buenos Aires, etc. Dialect matters,
+  and section headers translate too ("Início de Sessão", not "Session Startup").
+- `openclaw.json` and `NEXT-STEPS.md` are **always in English** — operational/technical files.
 
 ## OpenClaw verification — how to handle uncertainty
 

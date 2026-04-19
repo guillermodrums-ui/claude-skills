@@ -12,7 +12,7 @@ Official docs: <https://docs.claude.com/en/docs/claude-code/skills>
 
 | Skill | What it does |
 |---|---|
-| [`create-openclaw-agent`](skills/create-openclaw-agent/) | Scaffolds a complete [OpenClaw](https://github.com/openclaw/openclaw) agent workspace (SOUL.md, AGENTS.md, IDENTITY.md, HEARTBEAT.md, etc.) from an interview or an input document (.docx/.pdf/.md/.txt/.yaml). Writes files locally; installation into OpenClaw happens separately via the generated `INSTALL.md`. |
+| [`create-openclaw-agent`](skills/create-openclaw-agent/) | Bootstraps the **personality** of an [OpenClaw](https://github.com/openclaw/openclaw) agent — SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md, HEARTBEAT.md, TOOLS.md, a minimal `openclaw.json`, and a `NEXT-STEPS.md` handoff — from an interview or a document (.docx/.pdf/.md/.txt/.yaml). Intentionally tech-neutral: does NOT configure channels, install plugins, or prescribe CLI commands — environment wiring happens in a follow-up session against live OpenClaw docs. |
 
 ## Install
 
