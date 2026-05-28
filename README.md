@@ -13,6 +13,7 @@ Official docs: <https://docs.claude.com/en/docs/claude-code/skills>
 | Skill | What it does |
 |---|---|
 | [`create-openclaw-agent`](skills/create-openclaw-agent/) | Bootstraps the **personality** of an [OpenClaw](https://github.com/openclaw/openclaw) agent — SOUL.md, AGENTS.md, IDENTITY.md, USER.md, MEMORY.md, HEARTBEAT.md, TOOLS.md, a minimal `openclaw.json`, and a `NEXT-STEPS.md` handoff — from an interview or a document (.docx/.pdf/.md/.txt/.yaml). Intentionally tech-neutral: does NOT configure channels, install plugins, or prescribe CLI commands — environment wiring happens in a follow-up session against live OpenClaw docs. |
+| [`create-openclaw-real-estate-agent`](skills/create-openclaw-real-estate-agent/) | Real-estate–specialized variant of the generic skill. Drives an 8-category interview tailored to the industry: property catalog management, client indagation flow (alquiler vs. compra first), seller mode, lead database, operator secretary mode, learning system, and handoff triggers. Emits the 7 canonical files **plus** `propiedades.md` (catalog stub), `leads.sqlite` + `leads.schema.sql` (structured lead DB), and `contexto-operador.md` (campaigns + operator instructions). Same tech-neutral split — install session wires channels and plugins. |
 
 ## Install
 
